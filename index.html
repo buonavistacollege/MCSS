@@ -1,0 +1,1415 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Mahinda College Science Section - Term Test Results System</title>
+    
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    
+    <!-- Chart.js -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    
+    <!-- Firebase v9 (Modular) -->
+    <script type="module">
+        // Firebase configuration will be inserted here by the user
+        import { initializeApp } from 'https://www.gstatic.com/firebasejs/9.22.0/firebase-app.js';
+        import { getFirestore, collection, addDoc, onSnapshot, query, where, orderBy, deleteDoc, doc, updateDoc, getDocs } from 'https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore.js';
+        
+        // Make Firebase available globally
+        window.firebaseModules = { initializeApp, getFirestore, collection, addDoc, onSnapshot, query, where, orderBy, deleteDoc, doc, updateDoc, getDocs };
+    </script>
+    
+    <!-- Google Fonts -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=Playfair+Display:wght@700&display=swap" rel="stylesheet">
+    
+    <!-- Font Awesome -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    
+    <style>
+        :root {
+            --gold: #D4AF37;
+            --gold-light: #F4E8C1;
+            --gold-dark: #B8960C;
+            --black: #000000;
+            --white: #FFFFFF;
+        }
+        
+        * {
+            font-family: 'Inter', sans-serif;
+        }
+        
+        .font-display {
+            font-family: 'Playfair Display', serif;
+        }
+        
+        /* Glassmorphism */
+        .glass {
+            background: rgba(255, 255, 255, 0.1);
+            backdrop-filter: blur(10px);
+            -webkit-backdrop-filter: blur(10px);
+            border: 1px solid rgba(212, 175, 55, 0.3);
+        }
+        
+        .glass-dark {
+            background: rgba(0, 0, 0, 0.7);
+            backdrop-filter: blur(20px);
+            -webkit-backdrop-filter: blur(20px);
+            border: 1px solid rgba(212, 175, 55, 0.5);
+        }
+        
+        /* Gold Gradient */
+        .gold-gradient {
+            background: linear-gradient(135deg, #D4AF37 0%, #F4E8C1 50%, #D4AF37 100%);
+        }
+        
+        .gold-text {
+            background: linear-gradient(135deg, #D4AF37 0%, #F4E8C1 50%, #B8960C 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+        
+        /* Animations */
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(20px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        
+        @keyframes slideInRight {
+            from { opacity: 0; transform: translateX(100%); }
+            to { opacity: 1; transform: translateX(0); }
+        }
+        
+        @keyframes pulse {
+            0%, 100% { transform: scale(1); }
+            50% { transform: scale(1.05); }
+        }
+        
+        .animate-fade-in {
+            animation: fadeIn 0.6s ease-out forwards;
+        }
+        
+        .animate-slide-in {
+            animation: slideInRight 0.4s ease-out forwards;
+        }
+        
+        .hover-scale {
+            transition: transform 0.3s ease, box-shadow 0.3s ease;
+        }
+        
+        .hover-scale:hover {
+            transform: translateY(-5px) scale(1.02);
+            box-shadow: 0 20px 40px rgba(212, 175, 55, 0.3);
+        }
+        
+        /* Custom Scrollbar */
+        ::-webkit-scrollbar {
+            width: 8px;
+        }
+        
+        ::-webkit-scrollbar-track {
+            background: #000;
+        }
+        
+        ::-webkit-scrollbar-thumb {
+            background: var(--gold);
+            border-radius: 4px;
+        }
+        
+        /* Input Focus Effects */
+        .input-gold:focus {
+            border-color: var(--gold);
+            box-shadow: 0 0 0 3px rgba(212, 175, 55, 0.2);
+        }
+        
+        /* Card Shine Effect */
+        .card-shine {
+            position: relative;
+            overflow: hidden;
+        }
+        
+        .card-shine::before {
+            content: '';
+            position: absolute;
+            top: -50%;
+            left: -50%;
+            width: 200%;
+            height: 200%;
+            background: linear-gradient(
+                45deg,
+                transparent 30%,
+                rgba(212, 175, 55, 0.1) 50%,
+                transparent 70%
+            );
+            transform: rotate(45deg);
+            transition: all 0.6s;
+            opacity: 0;
+        }
+        
+        .card-shine:hover::before {
+            animation: shine 0.6s ease-in-out;
+        }
+        
+        @keyframes shine {
+            0% { transform: translateX(-100%) translateY(-100%) rotate(45deg); opacity: 0; }
+            50% { opacity: 1; }
+            100% { transform: translateX(100%) translateY(100%) rotate(45deg); opacity: 0; }
+        }
+        
+        /* Toast Notification */
+        .toast {
+            position: fixed;
+            bottom: 20px;
+            right: 20px;
+            padding: 16px 24px;
+            border-radius: 8px;
+            color: white;
+            font-weight: 500;
+            z-index: 9999;
+            transform: translateX(400px);
+            transition: transform 0.3s ease;
+        }
+        
+        .toast.show {
+            transform: translateX(0);
+        }
+        
+        .toast.success {
+            background: linear-gradient(135deg, #10B981, #059669);
+            border: 1px solid #34D399;
+        }
+        
+        .toast.error {
+            background: linear-gradient(135deg, #EF4444, #DC2626);
+            border: 1px solid #F87171;
+        }
+        
+        /* Loading Spinner */
+        .spinner {
+            border: 3px solid rgba(212, 175, 55, 0.3);
+            border-radius: 50%;
+            border-top-color: var(--gold);
+            width: 40px;
+            height: 40px;
+            animation: spin 1s linear infinite;
+        }
+        
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+        
+        /* Rank Badge */
+        .rank-badge {
+            background: linear-gradient(135deg, #D4AF37, #B8960C);
+            color: #000;
+            font-weight: 800;
+            border-radius: 50%;
+            width: 40px;
+            height: 40px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            box-shadow: 0 4px 15px rgba(212, 175, 55, 0.4);
+        }
+        
+        /* Z-Score Indicator */
+        .zscore-high { color: #10B981; }
+        .zscore-mid { color: #D4AF37; }
+        .zscore-low { color: #EF4444; }
+    </style>
+</head>
+<body class="bg-black text-white min-h-screen overflow-x-hidden">
+
+    <!-- Header -->
+    <header class="fixed top-0 w-full z-40 glass-dark border-b border-yellow-600/30">
+        <div class="container mx-auto px-4 py-4 flex justify-between items-center">
+            <div class="flex items-center space-x-4">
+                <div class="w-12 h-12 rounded-full gold-gradient flex items-center justify-center shadow-lg shadow-yellow-500/20">
+                    <i class="fas fa-graduation-cap text-black text-xl"></i>
+                </div>
+                <div>
+                    <h1 class="text-xl md:text-2xl font-display font-bold gold-text">Mahinda College</h1>
+                    <p class="text-xs text-gray-400 uppercase tracking-widest">Science Section - Term Test Results</p>
+                </div>
+            </div>
+            
+            <div class="hidden md:flex items-center space-x-6">
+                <div class="text-right">
+                    <p class="text-xs text-gray-400">Current Year</p>
+                    <p class="text-lg font-bold text-yellow-500" id="currentYearDisplay">2024</p>
+                </div>
+                <button onclick="showAdminHint()" class="text-gray-500 hover:text-yellow-500 transition-colors">
+                    <i class="fas fa-key text-sm"></i>
+                </button>
+            </div>
+        </div>
+    </header>
+
+    <!-- Main Content -->
+    <main class="container mx-auto px-4 pt-24 pb-12">
+        
+        <!-- Search & Filter Section -->
+        <section class="mb-8 animate-fade-in">
+            <div class="glass rounded-2xl p-6 md:p-8">
+                <div class="grid grid-cols-1 md:grid-cols-12 gap-4">
+                    
+                    <!-- Search Bar -->
+                    <div class="md:col-span-4 relative">
+                        <i class="fas fa-search absolute left-4 top-1/2 transform -translate-y-1/2 text-yellow-600"></i>
+                        <input type="text" id="searchInput" placeholder="Search by Name or Admission No..." 
+                               class="w-full pl-12 pr-4 py-3 bg-black/50 border border-yellow-600/30 rounded-xl text-white placeholder-gray-500 input-gold outline-none transition-all">
+                    </div>
+                    
+                    <!-- Section Filter -->
+                    <div class="md:col-span-2">
+                        <select id="sectionFilter" class="w-full px-4 py-3 bg-black/50 border border-yellow-600/30 rounded-xl text-white input-gold outline-none cursor-pointer">
+                            <option value="">All Sections</option>
+                            <option value="Maths">Mathematics</option>
+                            <option value="Bio">Biology</option>
+                        </select>
+                    </div>
+                    
+                    <!-- Class Filter -->
+                    <div class="md:col-span-2">
+                        <select id="classFilter" class="w-full px-4 py-3 bg-black/50 border border-yellow-600/30 rounded-xl text-white input-gold outline-none cursor-pointer">
+                            <option value="">All Classes</option>
+                            <option value="M1">M1</option>
+                            <option value="M2">M2</option>
+                            <option value="M3">M3</option>
+                            <option value="M4">M4</option>
+                            <option value="ME">ME</option>
+                            <option value="B1">B1</option>
+                            <option value="B2">B2</option>
+                        </select>
+                    </div>
+                    
+                    <!-- Year Filter -->
+                    <div class="md:col-span-2">
+                        <select id="yearFilter" class="w-full px-4 py-3 bg-black/50 border border-yellow-600/30 rounded-xl text-white input-gold outline-none cursor-pointer">
+                            <option value="2024">2024</option>
+                            <option value="2023">2023</option>
+                            <option value="2022">2022</option>
+                            <option value="2021">2021</option>
+                        </select>
+                    </div>
+                    
+                    <!-- Stats Button -->
+                    <div class="md:col-span-2">
+                        <button onclick="toggleStats()" class="w-full py-3 bg-gradient-to-r from-yellow-600 to-yellow-500 text-black font-bold rounded-xl hover:shadow-lg hover:shadow-yellow-500/30 transition-all transform hover:scale-105">
+                            <i class="fas fa-chart-bar mr-2"></i>Analytics
+                        </button>
+                    </div>
+                </div>
+                
+                <!-- Active Filters Display -->
+                <div id="activeFilters" class="flex flex-wrap gap-2 mt-4 hidden">
+                    <span class="text-sm text-gray-400">Active Filters:</span>
+                </div>
+            </div>
+        </section>
+
+        <!-- Statistics Dashboard (Hidden by default) -->
+        <section id="statsSection" class="mb-8 hidden animate-fade-in">
+            <div class="glass rounded-2xl p-6">
+                <div class="flex justify-between items-center mb-6">
+                    <h2 class="text-2xl font-bold gold-text font-display">Analytics Dashboard</h2>
+                    <button onclick="toggleStats()" class="text-gray-400 hover:text-white">
+                        <i class="fas fa-times text-xl"></i>
+                    </button>
+                </div>
+                
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <!-- Class-wise Average Chart -->
+                    <div class="bg-black/30 rounded-xl p-4 border border-yellow-600/20">
+                        <h3 class="text-lg font-semibold mb-4 text-yellow-500">Class-wise Average Performance</h3>
+                        <canvas id="classChart"></canvas>
+                    </div>
+                    
+                    <!-- Section Comparison Chart -->
+                    <div class="bg-black/30 rounded-xl p-4 border border-yellow-600/20">
+                        <h3 class="text-lg font-semibold mb-4 text-yellow-500">Section Comparison</h3>
+                        <canvas id="sectionChart"></canvas>
+                    </div>
+                </div>
+                
+                <!-- Quick Stats -->
+                <div class="grid grid-cols-2 md:grid-cols-4 gap-4 mt-6">
+                    <div class="bg-gradient-to-br from-yellow-600/20 to-transparent rounded-xl p-4 border border-yellow-600/30 text-center">
+                        <p class="text-3xl font-bold text-yellow-500" id="totalStudents">0</p>
+                        <p class="text-sm text-gray-400">Total Students</p>
+                    </div>
+                    <div class="bg-gradient-to-br from-yellow-600/20 to-transparent rounded-xl p-4 border border-yellow-600/30 text-center">
+                        <p class="text-3xl font-bold text-yellow-500" id="avgZScore">0.00</p>
+                        <p class="text-sm text-gray-400">Average Z-Score</p>
+                    </div>
+                    <div class="bg-gradient-to-br from-yellow-600/20 to-transparent rounded-xl p-4 border border-yellow-600/30 text-center">
+                        <p class="text-3xl font-bold text-yellow-500" id="topPerformer">-</p>
+                        <p class="text-sm text-gray-400">Top Performer</p>
+                    </div>
+                    <div class="bg-gradient-to-br from-yellow-600/20 to-transparent rounded-xl p-4 border border-yellow-600/30 text-center">
+                        <p class="text-3xl font-bold text-yellow-500" id="passRate">0%</p>
+                        <p class="text-sm text-gray-400">Pass Rate</p>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Results Grid -->
+        <section id="resultsSection">
+            <div class="flex justify-between items-center mb-6">
+                <h2 class="text-2xl font-bold font-display">Student Results</h2>
+                <div class="flex items-center space-x-2">
+                    <span class="text-sm text-gray-400">Sort by:</span>
+                    <select id="sortBy" onchange="loadResults()" class="bg-black/50 border border-yellow-600/30 rounded-lg px-3 py-1 text-sm outline-none focus:border-yellow-500">
+                        <option value="zscore">Z-Score (High to Low)</option>
+                        <option value="rank">Rank</option>
+                        <option value="name">Name</option>
+                        <option value="average">Average</option>
+                    </select>
+                </div>
+            </div>
+            
+            <!-- Loading State -->
+            <div id="loadingState" class="flex justify-center items-center py-20">
+                <div class="spinner"></div>
+            </div>
+            
+            <!-- Empty State -->
+            <div id="emptyState" class="hidden text-center py-20">
+                <i class="fas fa-search text-6xl text-gray-600 mb-4"></i>
+                <p class="text-xl text-gray-400">No results found</p>
+                <p class="text-sm text-gray-500 mt-2">Try adjusting your filters</p>
+            </div>
+            
+            <!-- Results Grid -->
+            <div id="resultsGrid" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+                <!-- Cards will be inserted here dynamically -->
+            </div>
+        </section>
+    </main>
+
+    <!-- Admin Panel Modal -->
+    <div id="adminModal" class="fixed inset-0 z-50 hidden">
+        <div class="absolute inset-0 bg-black/80 backdrop-blur-sm" onclick="closeAdminPanel()"></div>
+        <div class="absolute right-0 top-0 h-full w-full md:w-2/3 lg:w-1/2 bg-gray-900 border-l border-yellow-600/50 overflow-y-auto transform translate-x-full transition-transform duration-300" id="adminPanel">
+            
+            <!-- Admin Header -->
+            <div class="sticky top-0 z-10 bg-gray-900 border-b border-yellow-600/30 p-6 flex justify-between items-center">
+                <div class="flex items-center space-x-3">
+                    <div class="w-10 h-10 rounded-full bg-yellow-600 flex items-center justify-center">
+                        <i class="fas fa-lock text-black"></i>
+                    </div>
+                    <div>
+                        <h2 class="text-xl font-bold text-white">Admin Panel</h2>
+                        <p class="text-xs text-yellow-500">Data Management System</p>
+                    </div>
+                </div>
+                <button onclick="closeAdminPanel()" class="w-10 h-10 rounded-full bg-gray-800 hover:bg-gray-700 flex items-center justify-center transition-colors">
+                    <i class="fas fa-times text-white"></i>
+                </button>
+            </div>
+            
+            <!-- Admin Content -->
+            <div class="p-6 space-y-6">
+                
+                <!-- Add Student Form -->
+                <div class="glass rounded-xl p-6">
+                    <h3 class="text-lg font-bold mb-4 gold-text flex items-center">
+                        <i class="fas fa-user-plus mr-2"></i>
+                        Add New Student Result
+                    </h3>
+                    
+                    <form id="studentForm" class="space-y-4" onsubmit="handleFormSubmit(event)">
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            <!-- Name -->
+                            <div>
+                                <label class="block text-sm text-gray-400 mb-1">Full Name</label>
+                                <input type="text" id="studentName" required class="w-full px-4 py-2 bg-black/50 border border-yellow-600/30 rounded-lg text-white input-gold outline-none" placeholder="Enter student name">
+                            </div>
+                            
+                            <!-- Admission Number -->
+                            <div>
+                                <label class="block text-sm text-gray-400 mb-1">Admission Number</label>
+                                <input type="text" id="admissionNo" required class="w-full px-4 py-2 bg-black/50 border border-yellow-600/30 rounded-lg text-white input-gold outline-none" placeholder="e.g., 2024/M/001">
+                            </div>
+                            
+                            <!-- Class -->
+                            <div>
+                                <label class="block text-sm text-gray-400 mb-1">Class</label>
+                                <select id="studentClass" required onchange="handleClassChange()" class="w-full px-4 py-2 bg-black/50 border border-yellow-600/30 rounded-lg text-white input-gold outline-none">
+                                    <option value="">Select Class</option>
+                                    <option value="M1">M1</option>
+                                    <option value="M2">M2</option>
+                                    <option value="M3">M3</option>
+                                    <option value="M4">M4</option>
+                                    <option value="ME">ME</option>
+                                    <option value="B1">B1</option>
+                                    <option value="B2">B2</option>
+                                </select>
+                            </div>
+                            
+                            <!-- Section -->
+                            <div>
+                                <label class="block text-sm text-gray-400 mb-1">Section</label>
+                                <select id="studentSection" required onchange="handleSectionChange()" class="w-full px-4 py-2 bg-black/50 border border-yellow-600/30 rounded-lg text-white input-gold outline-none">
+                                    <option value="">Select Section</option>
+                                    <option value="Maths">Mathematics</option>
+                                    <option value="Bio">Biology</option>
+                                </select>
+                            </div>
+                            
+                            <!-- Year -->
+                            <div>
+                                <label class="block text-sm text-gray-400 mb-1">Year</label>
+                                <select id="studentYear" required class="w-full px-4 py-2 bg-black/50 border border-yellow-600/30 rounded-lg text-white input-gold outline-none">
+                                    <option value="2024">2024</option>
+                                    <option value="2023">2023</option>
+                                    <option value="2022">2022</option>
+                                    <option value="2021">2021</option>
+                                </select>
+                            </div>
+                        </div>
+                        
+                        <!-- Marks Section -->
+                        <div class="border-t border-yellow-600/20 pt-4 mt-4">
+                            <h4 class="text-sm font-semibold text-yellow-500 mb-3">Subject Marks</h4>
+                            
+                            <div class="grid grid-cols-2 md:grid-cols-3 gap-4">
+                                <!-- Combined Mathematics (Conditional) -->
+                                <div id="mathsField" class="hidden">
+                                    <label class="block text-sm text-gray-400 mb-1">Combined Maths</label>
+                                    <input type="number" id="mathsMarks" min="0" max="100" class="w-full px-4 py-2 bg-black/50 border border-yellow-600/30 rounded-lg text-white input-gold outline-none" placeholder="0-100">
+                                </div>
+                                
+                                <!-- Biology (Conditional) -->
+                                <div id="bioField" class="hidden">
+                                    <label class="block text-sm text-gray-400 mb-1">Biology</label>
+                                    <input type="number" id="bioMarks" min="0" max="100" class="w-full px-4 py-2 bg-black/50 border border-yellow-600/30 rounded-lg text-white input-gold outline-none" placeholder="0-100">
+                                </div>
+                                
+                                <!-- Physics -->
+                                <div>
+                                    <label class="block text-sm text-gray-400 mb-1">Physics</label>
+                                    <input type="number" id="physicsMarks" required min="0" max="100" class="w-full px-4 py-2 bg-black/50 border border-yellow-600/30 rounded-lg text-white input-gold outline-none" placeholder="0-100">
+                                </div>
+                                
+                                <!-- Chemistry -->
+                                <div>
+                                    <label class="block text-sm text-gray-400 mb-1">Chemistry</label>
+                                    <input type="number" id="chemistryMarks" required min="0" max="100" class="w-full px-4 py-2 bg-black/50 border border-yellow-600/30 rounded-lg text-white input-gold outline-none" placeholder="0-100">
+                                </div>
+                                
+                                <!-- English -->
+                                <div>
+                                    <label class="block text-sm text-gray-400 mb-1">English <span class="text-xs text-gray-500">(Not in Z-Score)</span></label>
+                                    <input type="number" id="englishMarks" min="0" max="100" class="w-full px-4 py-2 bg-black/50 border border-yellow-600/30 rounded-lg text-white input-gold outline-none" placeholder="0-100">
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <!-- Calculated Preview -->
+                        <div class="bg-yellow-600/10 rounded-lg p-4 border border-yellow-600/30">
+                            <h4 class="text-sm font-semibold text-yellow-500 mb-2">Auto-Calculated Metrics</h4>
+                            <div class="grid grid-cols-3 gap-4 text-center">
+                                <div>
+                                    <p class="text-xs text-gray-400">Total</p>
+                                    <p class="text-lg font-bold text-white" id="previewTotal">-</p>
+                                </div>
+                                <div>
+                                    <p class="text-xs text-gray-400">Average</p>
+                                    <p class="text-lg font-bold text-white" id="previewAverage">-</p>
+                                </div>
+                                <div>
+                                    <p class="text-xs text-gray-400">Z-Score</p>
+                                    <p class="text-lg font-bold text-yellow-500" id="previewZScore">-</p>
+                                </div>
+                            </div>
+                            <button type="button" onclick="calculatePreview()" class="mt-3 w-full py-2 bg-gray-800 hover:bg-gray-700 rounded-lg text-sm transition-colors">
+                                <i class="fas fa-calculator mr-2"></i>Calculate Preview
+                            </button>
+                        </div>
+                        
+                        <!-- Submit Buttons -->
+                        <div class="flex space-x-3">
+                            <button type="submit" class="flex-1 py-3 bg-gradient-to-r from-yellow-600 to-yellow-500 text-black font-bold rounded-lg hover:shadow-lg hover:shadow-yellow-500/30 transition-all transform hover:scale-105">
+                                <i class="fas fa-save mr-2"></i>Save Result
+                            </button>
+                            <button type="button" onclick="clearForm()" class="px-6 py-3 bg-gray-800 text-white rounded-lg hover:bg-gray-700 transition-colors">
+                                <i class="fas fa-undo"></i>
+                            </button>
+                        </div>
+                    </form>
+                </div>
+                
+                <!-- Bulk Actions -->
+                <div class="glass rounded-xl p-6">
+                    <h3 class="text-lg font-bold mb-4 text-red-400 flex items-center">
+                        <i class="fas fa-exclamation-triangle mr-2"></i>
+                        Danger Zone
+                    </h3>
+                    <div class="flex space-x-3">
+                        <button onclick="deleteAllResults()" class="flex-1 py-3 bg-red-600/20 border border-red-600 text-red-400 rounded-lg hover:bg-red-600/30 transition-colors">
+                            <i class="fas fa-trash-alt mr-2"></i>Delete All Results
+                        </button>
+                        <button onclick="recalculateAllRanks()" class="flex-1 py-3 bg-yellow-600/20 border border-yellow-600 text-yellow-500 rounded-lg hover:bg-yellow-600/30 transition-colors">
+                            <i class="fas fa-sync-alt mr-2"></i>Recalculate Ranks
+                        </button>
+                    </div>
+                </div>
+                
+                <!-- Recent Entries -->
+                <div class="glass rounded-xl p-6">
+                    <h3 class="text-lg font-bold mb-4 gold-text">Recent Entries</h3>
+                    <div id="recentEntries" class="space-y-2 max-h-64 overflow-y-auto">
+                        <p class="text-gray-500 text-center py-4">No recent entries</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Student Detail Modal -->
+    <div id="detailModal" class="fixed inset-0 z-50 hidden flex items-center justify-center p-4">
+        <div class="absolute inset-0 bg-black/80 backdrop-blur-sm" onclick="closeDetailModal()"></div>
+        <div class="relative bg-gray-900 rounded-2xl border border-yellow-600/50 max-w-lg w-full transform scale-95 opacity-0 transition-all duration-300" id="detailPanel">
+            <button onclick="closeDetailModal()" class="absolute top-4 right-4 w-8 h-8 rounded-full bg-gray-800 hover:bg-gray-700 flex items-center justify-center transition-colors z-10">
+                <i class="fas fa-times text-white"></i>
+            </button>
+            
+            <div class="p-8">
+                <div class="flex items-center space-x-4 mb-6">
+                    <div class="w-16 h-16 rounded-full gold-gradient flex items-center justify-center text-2xl font-bold text-black" id="detailInitials">
+                        MC
+                    </div>
+                    <div>
+                        <h3 class="text-2xl font-bold text-white" id="detailName">Student Name</h3>
+                        <p class="text-yellow-500" id="detailClass">Class - Section</p>
+                    </div>
+                </div>
+                
+                <div class="grid grid-cols-2 gap-4 mb-6">
+                    <div class="bg-black/30 rounded-lg p-4 text-center border border-yellow-600/20">
+                        <p class="text-3xl font-bold gold-text" id="detailZScore">0.00</p>
+                        <p class="text-xs text-gray-400 uppercase tracking-wider">Z-Score</p>
+                    </div>
+                    <div class="bg-black/30 rounded-lg p-4 text-center border border-yellow-600/20">
+                        <p class="text-3xl font-bold text-white" id="detailRank">#0</p>
+                        <p class="text-xs text-gray-400 uppercase tracking-wider">Class Rank</p>
+                    </div>
+                </div>
+                
+                <div class="space-y-3">
+                    <div class="flex justify-between py-2 border-b border-gray-800">
+                        <span class="text-gray-400">Admission No</span>
+                        <span class="text-white font-mono" id="detailAdNo">-</span>
+                    </div>
+                    <div class="flex justify-between py-2 border-b border-gray-800">
+                        <span class="text-gray-400">Section Rank</span>
+                        <span class="text-white" id="detailSectionRank">-</span>
+                    </div>
+                    <div class="flex justify-between py-2 border-b border-gray-800">
+                        <span class="text-gray-400">Average</span>
+                        <span class="text-white" id="detailAverage">0%</span>
+                    </div>
+                    <div class="flex justify-between py-2 border-b border-gray-800">
+                        <span class="text-gray-400">Total (Excl. English)</span>
+                        <span class="text-white" id="detailTotal">0</span>
+                    </div>
+                </div>
+                
+                <div class="mt-6 pt-6 border-t border-yellow-600/20">
+                    <h4 class="text-sm font-semibold text-yellow-500 mb-3">Subject Breakdown</h4>
+                    <div class="space-y-2" id="detailSubjects">
+                        <!-- Subject details inserted here -->
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Toast Container -->
+    <div id="toastContainer"></div>
+
+    <!-- Admin Access Hint -->
+    <div id="adminHint" class="fixed bottom-4 left-4 bg-gray-900 border border-yellow-600/30 rounded-lg p-4 hidden transform translate-y-20 transition-transform duration-300 z-40 max-w-xs">
+        <p class="text-sm text-gray-400 mb-2">Admin Access</p>
+        <p class="text-xs text-gray-500">Press <kbd class="px-2 py-1 bg-gray-800 rounded text-yellow-500">Ctrl</kbd> + <kbd class="px-2 py-1 bg-gray-800 rounded text-yellow-500">Shift</kbd> + <kbd class="px-2 py-1 bg-gray-800 rounded text-yellow-500">A</kbd> to open admin panel</p>
+    </div>
+
+    <script>
+        // ==========================================
+        // FIREBASE CONFIGURATION - INSERT YOUR CONFIG HERE
+        // ==========================================
+        const firebaseConfig = {
+            // TODO: Replace with your Firebase config
+            apiKey: "YOUR_API_KEY",
+            authDomain: "YOUR_PROJECT_ID.firebaseapp.com",
+            projectId: "YOUR_PROJECT_ID",
+            storageBucket: "YOUR_PROJECT_ID.appspot.com",
+            messagingSenderId: "YOUR_MESSAGING_SENDER_ID",
+            appId: "YOUR_APP_ID"
+        };
+        
+        // ==========================================
+        // GLOBAL VARIABLES
+        // ==========================================
+        let db = null;
+        let studentsRef = null;
+        let allStudents = [];
+        let classChart = null;
+        let sectionChart = null;
+        let isAdminOpen = false;
+        
+        // ==========================================
+        // INITIALIZATION
+        // ==========================================
+        document.addEventListener('DOMContentLoaded', async () => {
+            try {
+                // Initialize Firebase
+                const { initializeApp } = window.firebaseModules;
+                const app = initializeApp(firebaseConfig);
+                const { getFirestore } = window.firebaseModules;
+                db = getFirestore(app);
+                studentsRef = window.firebaseModules.collection(db, 'students');
+                
+                // Load initial data
+                setupRealtimeListener();
+                loadResults();
+                
+                // Setup keyboard shortcuts
+                setupKeyboardShortcuts();
+                
+                // Setup input listeners for calculations
+                setupCalculationListeners();
+                
+                showToast('System initialized successfully', 'success');
+            } catch (error) {
+                console.error('Firebase initialization error:', error);
+                showToast('Error connecting to database. Check Firebase config.', 'error');
+                
+                // Load demo data for preview
+                loadDemoData();
+            }
+        });
+        
+        // ==========================================
+        // KEYBOARD SHORTCUTS
+        // ==========================================
+        function setupKeyboardShortcuts() {
+            document.addEventListener('keydown', (e) => {
+                // Ctrl + Shift + A - Open Admin
+                if (e.ctrlKey && e.shiftKey && e.key === 'A') {
+                    e.preventDefault();
+                    openAdminPanel();
+                }
+                
+                // Ctrl + S - Save (when admin panel is open)
+                if (e.ctrlKey && e.key === 's' && isAdminOpen) {
+                    e.preventDefault();
+                    document.getElementById('studentForm').dispatchEvent(new Event('submit'));
+                }
+                
+                // Enter - Next input field
+                if (e.key === 'Enter' && e.target.tagName === 'INPUT') {
+                    const inputs = Array.from(document.querySelectorAll('#studentForm input, #studentForm select'));
+                    const currentIndex = inputs.indexOf(e.target);
+                    if (currentIndex < inputs.length - 1) {
+                        e.preventDefault();
+                        inputs[currentIndex + 1].focus();
+                    }
+                }
+                
+                // Escape - Close modals
+                if (e.key === 'Escape') {
+                    closeAdminPanel();
+                    closeDetailModal();
+                }
+            });
+        }
+        
+        // ==========================================
+        // REALTIME FIREBASE LISTENER
+        // ==========================================
+        function setupRealtimeListener() {
+            const { onSnapshot, query, orderBy } = window.firebaseModules;
+            const q = query(studentsRef, orderBy('createdAt', 'desc'));
+            
+            onSnapshot(q, (snapshot) => {
+                allStudents = [];
+                snapshot.forEach((doc) => {
+                    allStudents.push({ id: doc.id, ...doc.data() });
+                });
+                
+                loadResults();
+                updateRecentEntries();
+                updateStats();
+            }, (error) => {
+                console.error('Realtime listener error:', error);
+            });
+        }
+        
+        // ==========================================
+        // DATA MANAGEMENT
+        // ==========================================
+        async function handleFormSubmit(e) {
+            e.preventDefault();
+            
+            const studentData = collectFormData();
+            if (!validateData(studentData)) return;
+            
+            try {
+                // Calculate statistics
+                const calculated = await calculateStudentStats(studentData);
+                const finalData = { ...studentData, ...calculated };
+                
+                const { addDoc, serverTimestamp } = window.firebaseModules;
+                await addDoc(studentsRef, {
+                    ...finalData,
+                    createdAt: new Date(),
+                    updatedAt: new Date()
+                });
+                
+                showToast('Student result saved successfully!', 'success');
+                clearForm();
+                
+                // Recalculate ranks for all students
+                await recalculateAllRanks();
+            } catch (error) {
+                console.error('Error saving student:', error);
+                showToast('Error saving result: ' + error.message, 'error');
+            }
+        }
+        
+        function collectFormData() {
+            return {
+                name: document.getElementById('studentName').value.trim(),
+                adNo: document.getElementById('admissionNo').value.trim(),
+                class: document.getElementById('studentClass').value,
+                section: document.getElementById('studentSection').value,
+                year: parseInt(document.getElementById('studentYear').value),
+                maths: parseFloat(document.getElementById('mathsMarks').value) || 0,
+                biology: parseFloat(document.getElementById('bioMarks').value) || 0,
+                physics: parseFloat(document.getElementById('physicsMarks').value) || 0,
+                chemistry: parseFloat(document.getElementById('chemistryMarks').value) || 0,
+                english: parseFloat(document.getElementById('englishMarks').value) || 0
+            };
+        }
+        
+        function validateData(data) {
+            if (!data.name || !data.adNo || !data.class || !data.section) {
+                showToast('Please fill in all required fields', 'error');
+                return false;
+            }
+            
+            if (data.section === 'Maths' && data.maths === 0) {
+                showToast('Combined Mathematics mark is required for Maths section', 'error');
+                return false;
+            }
+            
+            if (data.section === 'Bio' && data.biology === 0) {
+                showToast('Biology mark is required for Bio section', 'error');
+                return false;
+            }
+            
+            return true;
+        }
+        
+        async function calculateStudentStats(student) {
+            // Calculate total (excluding English)
+            let total = student.physics + student.chemistry;
+            if (student.section === 'Maths') {
+                total += student.maths;
+            } else {
+                total += student.biology;
+            }
+            
+            const average = total / 3;
+            
+            // Get all students for Z-score calculation
+            const yearStudents = allStudents.filter(s => s.year === student.year && s.section === student.section);
+            const marks = yearStudents.map(s => {
+                let t = s.physics + s.chemistry;
+                t += s.section === 'Maths' ? s.maths : s.biology;
+                return t;
+            });
+            
+            // Add current student mark for calculation
+            marks.push(total);
+            
+            const mean = marks.reduce((a, b) => a + b, 0) / marks.length;
+            const variance = marks.reduce((acc, mark) => acc + Math.pow(mark - mean, 2), 0) / marks.length;
+            const stdDev = Math.sqrt(variance) || 1;
+            
+            const zScore = ((total - mean) / stdDev).toFixed(2);
+            
+            return {
+                total,
+                average: average.toFixed(2),
+                zScore: parseFloat(zScore)
+            };
+        }
+        
+        async function recalculateAllRanks() {
+            try {
+                const { getDocs, updateDoc, doc } = window.firebaseModules;
+                const snapshot = await getDocs(studentsRef);
+                const students = [];
+                
+                snapshot.forEach(docSnap => {
+                    students.push({ id: docSnap.id, ...docSnap.data() });
+                });
+                
+                // Group by year and class for ranking
+                const yearGroups = {};
+                students.forEach(s => {
+                    const key = `${s.year}_${s.class}`;
+                    if (!yearGroups[key]) yearGroups[key] = [];
+                    yearGroups[key].push(s);
+                });
+                
+                // Calculate class ranks
+                for (const [key, group] of Object.entries(yearGroups)) {
+                    group.sort((a, b) => b.zScore - a.zScore);
+                    for (let i = 0; i < group.length; i++) {
+                        const student = group[i];
+                        await updateDoc(doc(db, 'students', student.id), {
+                            rank: i + 1,
+                            classRank: i + 1
+                        });
+                    }
+                }
+                
+                // Group by year and section for section ranking
+                const sectionGroups = {};
+                students.forEach(s => {
+                    const key = `${s.year}_${s.section}`;
+                    if (!sectionGroups[key]) sectionGroups[key] = [];
+                    sectionGroups[key].push(s);
+                });
+                
+                for (const [key, group] of Object.entries(sectionGroups)) {
+                    group.sort((a, b) => b.zScore - a.zScore);
+                    for (let i = 0; i < group.length; i++) {
+                        const student = group[i];
+                        await updateDoc(doc(db, 'students', student.id), {
+                            sectionRank: i + 1
+                        });
+                    }
+                }
+                
+                showToast('All ranks recalculated successfully', 'success');
+            } catch (error) {
+                console.error('Error recalculating ranks:', error);
+                showToast('Error recalculating ranks', 'error');
+            }
+        }
+        
+        // ==========================================
+        // UI FUNCTIONS
+        // ==========================================
+        function loadResults() {
+            const searchTerm = document.getElementById('searchInput').value.toLowerCase();
+            const sectionFilter = document.getElementById('sectionFilter').value;
+            const classFilter = document.getElementById('classFilter').value;
+            const yearFilter = parseInt(document.getElementById('yearFilter').value);
+            const sortBy = document.getElementById('sortBy').value;
+            
+            let filtered = allStudents.filter(s => s.year === yearFilter);
+            
+            if (searchTerm) {
+                filtered = filtered.filter(s => 
+                    s.name.toLowerCase().includes(searchTerm) || 
+                    s.adNo.toLowerCase().includes(searchTerm)
+                );
+            }
+            
+            if (sectionFilter) {
+                filtered = filtered.filter(s => s.section === sectionFilter);
+            }
+            
+            if (classFilter) {
+                filtered = filtered.filter(s => s.class === classFilter);
+            }
+            
+            // Sorting
+            filtered.sort((a, b) => {
+                switch(sortBy) {
+                    case 'zscore': return b.zScore - a.zScore;
+                    case 'rank': return (a.classRank || 0) - (b.classRank || 0);
+                    case 'name': return a.name.localeCompare(b.name);
+                    case 'average': return b.average - a.average;
+                    default: return b.zScore - a.zScore;
+                }
+            });
+            
+            displayResults(filtered);
+            updateActiveFilters();
+        }
+        
+        function displayResults(students) {
+            const grid = document.getElementById('resultsGrid');
+            const loading = document.getElementById('loadingState');
+            const empty = document.getElementById('emptyState');
+            
+            loading.classList.add('hidden');
+            
+            if (students.length === 0) {
+                grid.innerHTML = '';
+                empty.classList.remove('hidden');
+                return;
+            }
+            
+            empty.classList.add('hidden');
+            
+            grid.innerHTML = students.map((student, index) => {
+                const zScoreClass = student.zScore > 1 ? 'zscore-high' : student.zScore > 0 ? 'zscore-mid' : 'zscore-low';
+                const delay = index * 50;
+                
+                return `
+                    <div class="glass rounded-xl p-6 card-shine hover-scale cursor-pointer animate-fade-in" 
+                         style="animation-delay: ${delay}ms"
+                         onclick="showStudentDetail('${student.id}')">
+                        
+                        <div class="flex justify-between items-start mb-4">
+                            <div class="rank-badge text-sm">
+                                ${student.classRank || '-'}
+                            </div>
+                            <div class="text-right">
+                                <span class="text-xs px-2 py-1 rounded-full ${student.section === 'Maths' ? 'bg-blue-600/30 text-blue-400' : 'bg-green-600/30 text-green-400'}">
+                                    ${student.section}
+                                </span>
+                            </div>
+                        </div>
+                        
+                        <h3 class="text-lg font-bold text-white mb-1 truncate">${student.name}</h3>
+                        <p class="text-sm text-gray-400 mb-4">${student.class} • ${student.adNo}</p>
+                        
+                        <div class="grid grid-cols-2 gap-4 pt-4 border-t border-yellow-600/20">
+                            <div>
+                                <p class="text-xs text-gray-500 mb-1">Z-Score</p>
+                                <p class="text-xl font-bold ${zScoreClass}">${student.zScore > 0 ? '+' : ''}${student.zScore}</p>
+                            </div>
+                            <div class="text-right">
+                                <p class="text-xs text-gray-500 mb-1">Average</p>
+                                <p class="text-xl font-bold text-white">${student.average}%</p>
+                            </div>
+                        </div>
+                        
+                        <div class="mt-4 pt-3 border-t border-gray-800 flex justify-between items-center text-xs text-gray-500">
+                            <span>Section Rank: #${student.sectionRank || '-'}</span>
+                            <i class="fas fa-chevron-right text-yellow-600"></i>
+                        </div>
+                    </div>
+                `;
+            }).join('');
+        }
+        
+        function showStudentDetail(studentId) {
+            const student = allStudents.find(s => s.id === studentId);
+            if (!student) return;
+            
+            document.getElementById('detailName').textContent = student.name;
+            document.getElementById('detailClass').textContent = `${student.class} • ${student.section} Section`;
+            document.getElementById('detailInitials').textContent = student.name.split(' ').map(n => n[0]).join('').substring(0, 2).toUpperCase();
+            document.getElementById('detailZScore').textContent = (student.zScore > 0 ? '+' : '') + student.zScore;
+            document.getElementById('detailZScore').className = `text-3xl font-bold ${student.zScore > 1 ? 'text-green-400' : student.zScore > 0 ? 'gold-text' : 'text-red-400'}`;
+            document.getElementById('detailRank').textContent = '#' + (student.classRank || '-');
+            document.getElementById('detailSectionRank').textContent = '#' + (student.sectionRank || '-');
+            document.getElementById('detailAdNo').textContent = student.adNo;
+            document.getElementById('detailAverage').textContent = student.average + '%';
+            document.getElementById('detailTotal').textContent = student.total;
+            
+            // Subject breakdown
+            const subjectsHtml = `
+                <div class="flex justify-between items-center">
+                    <span class="text-gray-400">${student.section === 'Maths' ? 'Combined Mathematics' : 'Biology'}</span>
+                    <span class="font-bold ${student.section === 'Maths' ? (student.maths >= 75 ? 'text-green-400' : student.maths >= 60 ? 'text-yellow-400' : 'text-red-400') : (student.biology >= 75 ? 'text-green-400' : student.biology >= 60 ? 'text-yellow-400' : 'text-red-400')}">
+                        ${student.section === 'Maths' ? student.maths : student.biology}%
+                    </span>
+                </div>
+                <div class="flex justify-between items-center">
+                    <span class="text-gray-400">Physics</span>
+                    <span class="font-bold ${student.physics >= 75 ? 'text-green-400' : student.physics >= 60 ? 'text-yellow-400' : 'text-red-400'}">${student.physics}%</span>
+                </div>
+                <div class="flex justify-between items-center">
+                    <span class="text-gray-400">Chemistry</span>
+                    <span class="font-bold ${student.chemistry >= 75 ? 'text-green-400' : student.chemistry >= 60 ? 'text-yellow-400' : 'text-red-400'}">${student.chemistry}%</span>
+                </div>
+                <div class="flex justify-between items-center pt-2 border-t border-gray-800">
+                    <span class="text-gray-500">English (Not counted)</span>
+                    <span class="font-bold text-gray-500">${student.english || 0}%</span>
+                </div>
+            `;
+            document.getElementById('detailSubjects').innerHTML = subjectsHtml;
+            
+            const modal = document.getElementById('detailModal');
+            const panel = document.getElementById('detailPanel');
+            modal.classList.remove('hidden');
+            setTimeout(() => {
+                panel.classList.remove('scale-95', 'opacity-0');
+                panel.classList.add('scale-100', 'opacity-100');
+            }, 10);
+        }
+        
+        function closeDetailModal() {
+            const modal = document.getElementById('detailModal');
+            const panel = document.getElementById('detailPanel');
+            panel.classList.remove('scale-100', 'opacity-100');
+            panel.classList.add('scale-95', 'opacity-0');
+            setTimeout(() => {
+                modal.classList.add('hidden');
+            }, 300);
+        }
+        
+        // ==========================================
+        // ADMIN PANEL FUNCTIONS
+        // ==========================================
+        function openAdminPanel() {
+            isAdminOpen = true;
+            const modal = document.getElementById('adminModal');
+            const panel = document.getElementById('adminPanel');
+            modal.classList.remove('hidden');
+            setTimeout(() => {
+                panel.classList.remove('translate-x-full');
+            }, 10);
+        }
+        
+        function closeAdminPanel() {
+            isAdminOpen = false;
+            const modal = document.getElementById('adminModal');
+            const panel = document.getElementById('adminPanel');
+            panel.classList.add('translate-x-full');
+            setTimeout(() => {
+                modal.classList.add('hidden');
+            }, 300);
+        }
+        
+        function showAdminHint() {
+            const hint = document.getElementById('adminHint');
+            hint.classList.remove('hidden', 'translate-y-20');
+            setTimeout(() => {
+                hint.classList.add('translate-y-20');
+                setTimeout(() => hint.classList.add('hidden'), 300);
+            }, 5000);
+        }
+        
+        function handleSectionChange() {
+            const section = document.getElementById('studentSection').value;
+            const mathsField = document.getElementById('mathsField');
+            const bioField = document.getElementById('bioField');
+            
+            if (section === 'Maths') {
+                mathsField.classList.remove('hidden');
+                bioField.classList.add('hidden');
+                document.getElementById('bioMarks').value = '';
+            } else if (section === 'Bio') {
+                mathsField.classList.add('hidden');
+                bioField.classList.remove('hidden');
+                document.getElementById('mathsMarks').value = '';
+            } else {
+                mathsField.classList.add('hidden');
+                bioField.classList.add('hidden');
+            }
+        }
+        
+        function handleClassChange() {
+            const cls = document.getElementById('studentClass').value;
+            if (cls.startsWith('M')) {
+                document.getElementById('studentSection').value = 'Maths';
+                handleSectionChange();
+            } else if (cls.startsWith('B')) {
+                document.getElementById('studentSection').value = 'Bio';
+                handleSectionChange();
+            }
+        }
+        
+        function calculatePreview() {
+            const data = collectFormData();
+            if (!validateData(data)) return;
+            
+            let total = data.physics + data.chemistry;
+            total += data.section === 'Maths' ? data.maths : data.biology;
+            const average = (total / 3).toFixed(2);
+            
+            // Simple Z-score estimate based on current data
+            const yearStudents = allStudents.filter(s => s.year === data.year && s.section === data.section);
+            const marks = yearStudents.map(s => {
+                let t = s.physics + s.chemistry;
+                t += s.section === 'Maths' ? s.maths : s.biology;
+                return t;
+            });
+            marks.push(total);
+            
+            const mean = marks.reduce((a, b) => a + b, 0) / marks.length;
+            const variance = marks.reduce((acc, mark) => acc + Math.pow(mark - mean, 2), 0) / marks.length;
+            const stdDev = Math.sqrt(variance) || 1;
+            const zScore = ((total - mean) / stdDev).toFixed(2);
+            
+            document.getElementById('previewTotal').textContent = total;
+            document.getElementById('previewAverage').textContent = average + '%';
+            document.getElementById('previewZScore').textContent = (zScore > 0 ? '+' : '') + zScore;
+        }
+        
+        function setupCalculationListeners() {
+            const inputs = ['mathsMarks', 'bioMarks', 'physicsMarks', 'chemistryMarks'];
+            inputs.forEach(id => {
+                document.getElementById(id)?.addEventListener('input', () => {
+                    if (document.getElementById('studentSection').value) {
+                        calculatePreview();
+                    }
+                });
+            });
+        }
+        
+        function clearForm() {
+            document.getElementById('studentForm').reset();
+            document.getElementById('mathsField').classList.add('hidden');
+            document.getElementById('bioField').classList.add('hidden');
+            document.getElementById('previewTotal').textContent = '-';
+            document.getElementById('previewAverage').textContent = '-';
+            document.getElementById('previewZScore').textContent = '-';
+        }
+        
+        async function deleteAllResults() {
+            if (!confirm('WARNING: This will delete ALL student results. Are you sure?')) return;
+            if (!confirm('This action cannot be undone. Type "DELETE" to confirm.')) return;
+            
+            try {
+                const { getDocs, deleteDoc, doc } = window.firebaseModules;
+                const snapshot = await getDocs(studentsRef);
+                const deletePromises = [];
+                
+                snapshot.forEach((document) => {
+                    deletePromises.push(deleteDoc(doc(db, 'students', document.id)));
+                });
+                
+                await Promise.all(deletePromises);
+                showToast('All results deleted successfully', 'success');
+            } catch (error) {
+                showToast('Error deleting results: ' + error.message, 'error');
+            }
+        }
+        
+        function updateRecentEntries() {
+            const container = document.getElementById('recentEntries');
+            const recent = allStudents.slice(0, 10);
+            
+            if (recent.length === 0) {
+                container.innerHTML = '<p class="text-gray-500 text-center py-4">No recent entries</p>';
+                return;
+            }
+            
+            container.innerHTML = recent.map(s => `
+                <div class="flex justify-between items-center p-3 bg-black/30 rounded-lg border border-yellow-600/10 hover:border-yellow-600/30 transition-colors">
+                    <div>
+                        <p class="text-sm font-semibold text-white">${s.name}</p>
+                        <p class="text-xs text-gray-500">${s.class} • Z-Score: ${s.zScore}</p>
+                    </div>
+                    <button onclick="deleteStudent('${s.id}')" class="text-red-400 hover:text-red-300 p-2">
+                        <i class="fas fa-trash-alt"></i>
+                    </button>
+                </div>
+            `).join('');
+        }
+        
+        async function deleteStudent(id) {
+            if (!confirm('Delete this student record?')) return;
+            
+            try {
+                const { deleteDoc, doc } = window.firebaseModules;
+                await deleteDoc(doc(db, 'students', id));
+                showToast('Student deleted successfully', 'success');
+            } catch (error) {
+                showToast('Error deleting student', 'error');
+            }
+        }
+        
+        // ==========================================
+        // STATISTICS & CHARTS
+        // ==========================================
+        function toggleStats() {
+            const section = document.getElementById('statsSection');
+            section.classList.toggle('hidden');
+            
+            if (!section.classList.contains('hidden')) {
+                updateCharts();
+            }
+        }
+        
+        function updateStats() {
+            const year = parseInt(document.getElementById('yearFilter').value);
+            const yearStudents = allStudents.filter(s => s.year === year);
+            
+            document.getElementById('totalStudents').textContent = yearStudents.length;
+            
+            if (yearStudents.length > 0) {
+                const avgZ = yearStudents.reduce((acc, s) => acc + s.zScore, 0) / yearStudents.length;
+                document.getElementById('avgZScore').textContent = avgZ.toFixed(2);
+                
+                const top = yearStudents.reduce((prev, current) => (prev.zScore > current.zScore) ? prev : current);
+                document.getElementById('topPerformer').textContent = top.name.split(' ')[0];
+                
+                const passCount = yearStudents.filter(s => s.average >= 40).length;
+                document.getElementById('passRate').textContent = Math.round((passCount / yearStudents.length) * 100) + '%';
+            } else {
+                document.getElementById('avgZScore').textContent = '0.00';
+                document.getElementById('topPerformer').textContent = '-';
+                document.getElementById('passRate').textContent = '0%';
+            }
+        }
+        
+        function updateCharts() {
+            const year = parseInt(document.getElementById('yearFilter').value);
+            const yearStudents = allStudents.filter(s => s.year === year);
+            
+            // Class-wise data
+            const classes = ['M1', 'M2', 'M3', 'M4', 'ME', 'B1', 'B2'];
+            const classAvgs = classes.map(cls => {
+                const clsStudents = yearStudents.filter(s => s.class === cls);
+                if (clsStudents.length === 0) return 0;
+                return clsStudents.reduce((acc, s) => acc + parseFloat(s.average), 0) / clsStudents.length;
+            });
+            
+            // Section data
+            const mathsStudents = yearStudents.filter(s => s.section === 'Maths');
+            const bioStudents = yearStudents.filter(s => s.section === 'Bio');
+            const sectionAvgs = [
+                mathsStudents.length ? mathsStudents.reduce((acc, s) => acc + parseFloat(s.average), 0) / mathsStudents.length : 0,
+                bioStudents.length ? bioStudents.reduce((acc, s) => acc + parseFloat(s.average), 0) / bioStudents.length : 0
+            ];
+            
+            // Destroy existing charts
+            if (classChart) classChart.destroy();
+            if (sectionChart) sectionChart.destroy();
+            
+            // Class Chart
+            const ctx1 = document.getElementById('classChart').getContext('2d');
+            classChart = new Chart(ctx1, {
+                type: 'bar',
+                data: {
+                    labels: classes,
+                    datasets: [{
+                        label: 'Average Marks',
+                        data: classAvgs,
+                        backgroundColor: 'rgba(212, 175, 55, 0.8)',
+                        borderColor: '#D4AF37',
+                        borderWidth: 2,
+                        borderRadius: 8
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    plugins: {
+                        legend: { display: false }
+                    },
+                    scales: {
+                        y: {
+                            beginAtZero: true,
+                            max: 100,
+                            grid: { color: 'rgba(255, 255, 255, 0.1)' },
+                            ticks: { color: '#9CA3AF' }
+                        },
+                        x: {
+                            grid: { display: false },
+                            ticks: { color: '#9CA3AF' }
+                        }
+                    }
+                }
+            });
+            
+            // Section Chart
+            const ctx2 = document.getElementById('sectionChart').getContext('2d');
+            sectionChart = new Chart(ctx2, {
+                type: 'doughnut',
+                data: {
+                    labels: ['Mathematics', 'Biology'],
+                    datasets: [{
+                        data: sectionAvgs,
+                        backgroundColor: ['rgba(59, 130, 246, 0.8)', 'rgba(34, 197, 94, 0.8)'],
+                        borderColor: ['#3B82F6', '#22C55E'],
+                        borderWidth: 2
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    plugins: {
+                        legend: {
+                            position: 'bottom',
+                            labels: { color: '#9CA3AF' }
+                        }
+                    }
+                }
+            });
+        }
+        
+        // ==========================================
+        // UTILITY FUNCTIONS
+        // ==========================================
+        function updateActiveFilters() {
+            const container = document.getElementById('activeFilters');
+            const filters = [];
+            
+            if (document.getElementById('sectionFilter').value) {
+                filters.push(`Section: ${document.getElementById('sectionFilter').value}`);
+            }
+            if (document.getElementById('classFilter').value) {
+                filters.push(`Class: ${document.getElementById('classFilter').value}`);
+            }
+            
+            if (filters.length > 0) {
+                container.innerHTML = '<span class="text-sm text-gray-400">Active Filters:</span>' + 
+                    filters.map(f => `<span class="px-3 py-1 bg-yellow-600/20 text-yellow-500 rounded-full text-xs border border-yellow-600/30">${f}</span>`).join('');
+                container.classList.remove('hidden');
+            } else {
+                container.classList.add('hidden');
+            }
+        }
+        
+        function showToast(message, type = 'success') {
+            const container = document.getElementById('toastContainer');
+            const toast = document.createElement('div');
+            toast.className = `toast ${type}`;
+            toast.innerHTML = `
+                <div class="flex items-center space-x-2">
+                    <i class="fas ${type === 'success' ? 'fa-check-circle' : 'fa-exclamation-circle'}"></i>
+                    <span>${message}</span>
+                </div>
+            `;
+            
+            container.appendChild(toast);
+            
+            setTimeout(() => toast.classList.add('show'), 100);
+            setTimeout(() => {
+                toast.classList.remove('show');
+                setTimeout(() => toast.remove(), 300);
+            }, 3000);
+        }
+        
+        // Filter change listeners
+        document.getElementById('searchInput')?.addEventListener('input', loadResults);
+        document.getElementById('sectionFilter')?.addEventListener('change', loadResults);
+        document.getElementById('classFilter')?.addEventListener('change', loadResults);
+        document.getElementById('yearFilter')?.addEventListener('change', () => {
+            document.getElementById('currentYearDisplay').textContent = document.getElementById('yearFilter').value;
+            loadResults();
+            updateStats();
+        });
+        
+        // Demo data for preview (when Firebase is not connected)
+        function loadDemoData() {
+            allStudents = [
+                { id: '1', name: 'Kasun Perera', adNo: '2024/M/001', class: 'M1', section: 'Maths', year: 2024, maths: 85, physics: 78, chemistry: 82, english: 75, total: 245, average: 81.67, zScore: 1.25, classRank: 1, sectionRank: 1 },
+                { id: '2', name: 'Nimal Fernando', adNo: '2024/M/002', class: 'M1', section: 'Maths', year: 2024, maths: 72, physics: 68, chemistry: 75, english: 70, total: 215, average: 71.67, zScore: 0.45, classRank: 2, sectionRank: 2 },
+                { id: '3', name: 'Sunil Silva', adNo: '2024/B/001', class: 'B1', section: 'Bio', year: 2024, biology: 88, physics: 76, chemistry: 80, english: 72, total: 244, average: 81.33, zScore: 1.15, classRank: 1, sectionRank: 1 },
+                { id: '4', name: 'Amara Jayasinghe', adNo: '2024/M/003', class: 'M2', section: 'Maths', year: 2024, maths: 65, physics: 70, chemistry: 68, english: 65, total: 203, average: 67.67, zScore: -0.25, classRank: 1, sectionRank: 3 },
+                { id: '5', name: 'Dilshan Wickrama', adNo: '2024/B/002', class: 'B1', section: 'Bio', year: 2024, biology: 75, physics: 72, chemistry: 78, english: 68, total: 225, average: 75.00, zScore: 0.65, classRank: 2, sectionRank: 2 }
+            ];
+            loadResults();
+            updateStats();
+            showToast('Running in demo mode - Firebase not connected', 'error');
+        }
+    </script>
+</body>
+</html>
